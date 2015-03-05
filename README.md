@@ -20,16 +20,15 @@ also run on some other OSs.
 
 What's included
 ===============
-* 'astro_rawtofits.py'  
-  Raw development into fits files (one per channel). Mostly based on 
-  M. Emre Aydin's [cr2fits](https://github.com/eaydin/cr2fits).
-  
+* 'astro_develop.py'  
+  Raw development into fits files (one per channel). 
+  Inspired by M. Emre Aydin's [cr2fits](https://github.com/eaydin/cr2fits).
+
 * 'astro_align.py'  
   Alignement of multiple frames.
 
 * 'astro_fuse.py'  
   Takes the aligned frames and output the combined frame.
-
 
 A word on lincensing
 ====================
@@ -50,7 +49,7 @@ I'm going to list them here, for convenience and future study, and to credit
 the authors for their job.
 
 ## Libraries
-* [**Alipy**](http://obswww.unige.ch/~tewes/alipy/)  
+* [**Alipy**](http://obswww.unige.ch/~tewes/alipy/) (GPLv3)
   Alignement of multiple frames. At the present stage the tool 
   'astro_align.py' is basically a copy of 
   [Alipy's tutorial](http://obswww.unige.ch/~tewes/alipy/tutorial.html).
@@ -59,6 +58,16 @@ the authors for their job.
   [doc](http://pythonhosted.org/lensfunpy/)  
   Lens distortion correction. See in particular the example code on the 
   project's page.
+
+* [**PyFITS**](http://www.stsci.edu/institute/software_hardware/pyfits/)
+  [doc](http://pythonhosted.org/pyfits/index.html)
+  Python library for FITS i/o. (Fits is the standard file format for 
+  astronomical data).
+
+* [**Rawpy**](http://pythonhosted.org//rawpy/api/index.html) (MIT)
+  ([Code](https://github.com/neothemachine/rawpy))
+  A Python wrapper around [libraw](http://www.libraw.org/) (LGPLv2.1 with
+  GPLv2 and GPLv3 demosaicing code).
 
 ## Other code
 * ['cr2fits'](https://github.com/eaydin/cr2fits)
