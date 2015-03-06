@@ -45,6 +45,10 @@ DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
 
 
 def raw_to_nparray(fname):
+    '''
+    Handles the demosaicing of the raw image, returned as 16-bit RGB numpy 
+    array.
+    '''
     # read RAW file
     raw_img = rp.imread(fname)
     # demosaic and stuff...aka dcraw develop
@@ -52,6 +56,9 @@ def raw_to_nparray(fname):
     return raw_img.dcraw_make_mem_image()
 
 def extract_exif(fname):
+    '''
+    Extracts the EXIF metadata, returned as a dictionary.
+    '''
     with exiftool.ExifTool() as et:
         metadata = et.get_metadata(fname)
     return metadata
@@ -82,6 +89,9 @@ def pack_FITS(fname, img_data, img_exif, channel=[0, 1, 2]):
 
 
 def process_file(fname):
+    '''
+    Convenience function that wraps the whole postprocessing from RAW to FITS.
+    '''
     img_array = raw_to_nparray(fname)
     img_exif = extract_exif(fname)
     pack_FITS(fname, img_array, img_exif)
