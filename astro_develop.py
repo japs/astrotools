@@ -25,6 +25,7 @@
 from sys import stdin, stdout, stderr, argv, exit
 from multiprocessing import Pool
 import argparse as ap
+from functools import partial
 
 import rawpy as rp
 import exiftool            #git://github.com/smarnach/pyexiftool.git
@@ -35,6 +36,8 @@ import numpy as np
 par = ap.ArgumentParser(prog="rawtofits",
                         description="Convert RAW image files to FITS.")
 par.add_argument("filenames", nargs='+', help="Files to be processed.")
+par.add_argument("--no-demosaic", default=False, action="store_true", 
+                 help="Use raw sensor data, without demosaicing..")
 
 
 DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
@@ -43,14 +46,18 @@ DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
                                  output_bps=16)
 
 
+def open_raw_image(fname):
+    '''
+    Read the raw image and return the corresponding object
+    '''
+    raw_img = rp.imread(fname)
+    return raw_img
 
-def raw_to_nparray(fname):
+def raw_to_nparray(raw_img):
     '''
     Handles the demosaicing of the raw image, returned as 16-bit RGB numpy 
     array.
     '''
-    # read RAW file
-    raw_img = rp.imread(fname)
     # demosaic and stuff...aka dcraw develop
     raw_img.dcraw_process(DCRAW_DEFAULT_PARAMS)
     return raw_img.dcraw_make_mem_image()
@@ -63,38 +70,50 @@ def extract_exif(fname):
         metadata = et.get_metadata(fname)
     return metadata
 
-def pack_FITS(fname, img_data, img_exif, channel=[0, 1, 2]):    
+def FITS_header(fname, img_exif):
+    hdu_header = pyfits.Header()
+    hdu_header.set("OBSTIME", img_exif['EXIF:CreateDate'])
+    hdu_header.set('EXPTIME', img_exif['EXIF:ExposureTime'])
+    hdu_header.set('APERTUR', img_exif['EXIF:FNumber'])
+    hdu_header.set('ISO',     img_exif['EXIF:ISO'])
+    hdu_header.set('FOCAL',   img_exif['EXIF:FocalLength'])
+    hdu_header.set('ORIGIN',  fname)
+    hdu_header.set('CAMERA',  img_exif['EXIF:Model'])
+
+    hdu_header.add_comment('EXPTIME is in seconds.')
+    hdu_header.add_comment('APERTUR is the ratio as in f/APERTUR')
+    hdu_header.add_comment('FOCAL is in mm')
+    return hdu_header
+
+
+
+def pack_FITS(fname, img_data, header, channel):    
     '''
     Creates the actual FITS.
     channels contains one or more of 0, 1, 2 in a list, representing RGB, resp.
     '''
-    for ch in channel:
-        hdu = pyfits.PrimaryHDU(img_data[:, :, ch])
-        hdu.header.set("OBSTIME", img_exif['EXIF:CreateDate'])
-        hdu.header.set('EXPTIME', img_exif['EXIF:ExposureTime'])
-        hdu.header.set('APERTUR', img_exif['EXIF:FNumber'])
-        hdu.header.set('ISO',     img_exif['EXIF:ISO'])
-        hdu.header.set('FOCAL',   img_exif['EXIF:FocalLength'])
-        hdu.header.set('ORIGIN',  fname)
-        hdu.header.set('FILTER',  ch)
-        hdu.header.set('CAMERA',  img_exif['EXIF:Model'])
+    hdu = pyfits.PrimaryHDU(data=img_data, header=header)
+    hdu.header.set('FILTER',  channel)
 
-        hdu.header.add_comment('EXPTIME is in seconds.')
-        hdu.header.add_comment('APERTUR is the ratio as in f/APERTUR')
-        hdu.header.add_comment('FOCAL is in mm')
-
-        basename = fname.split('.')[0]
-        hdu.writeto("{}_{}.fits".format(basename, ch))
+    basename = fname.split('.')[0]
+    hdu.writeto("{}_{}.fits".format(basename, channel))
 
 
 
-def process_file(fname):
+def process_file(fname, args):
     '''
     Convenience function that wraps the whole postprocessing from RAW to FITS.
     '''
-    img_array = raw_to_nparray(fname)
+    raw_img = open_raw_image(fname)
     img_exif = extract_exif(fname)
-    pack_FITS(fname, img_array, img_exif)
+    fits_header = FITS_header(fname, img_exif)
+    if args.no_demosaic:
+        img_array = raw_img.raw_image
+        pack_FITS(fname, img_array, fits_header, 4)
+    else:
+        img_array = raw_to_nparray(raw_img)
+        for channel in [0, 1, 2]:
+            pack_FITS(fname, img_array[:, :, channel], fits_header, channel)
 
 
 
@@ -102,6 +121,7 @@ if __name__ == "__main__":
     args = par.parse_args()
 
     with Pool() as pool:
-        pool.map(process_file, args.filenames)
+        partial_process_file = partial(process_file, args=args)
+        pool.map(partial_process_file, args.filenames)
 
     exit(0)
