@@ -26,6 +26,7 @@ from sys import exit, stdin, stdout, stderr, argv
 import numpy as np
 import argparse as ap
 import pyfits
+import re
 
 par = ap.ArgumentParser(prog="combine_frames",
                         description=("Combine different frames into a single "
@@ -38,6 +39,8 @@ par.add_argument("-r", '--rows', type=int, default=None,
                  help="Average this many rows at a time. (Default: optimise)")
 par.add_argument("-v", '--verbose', default=False, action='store_true',
                  help="Print verbose output.")
+par.add_argument("-o", "--output-file", default="output.fits",
+                 help="Output file name.")
 
 
 if __name__ == "__main__":
@@ -78,6 +81,8 @@ if __name__ == "__main__":
     # write output FITS
     hdu = pyfits.PrimaryHDU(out_frame)
     hdu.header = input_frames[0].header
-    hdu.writeto("output.fits")
+    if not re.search("\.fits$", args.output_file):
+        args.output += ".fits"
+    hdu.writeto(args.output_file)
         
     exit(0)
