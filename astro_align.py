@@ -28,10 +28,12 @@ import argparse as ap
 import re
 from multiprocessing import Pool
 from functools import partial
+import pickle
 
 par = ap.ArgumentParser(prog="rawtofits",
                         description="Convert RAW image files to FITS.")
-par.add_argument("filenames", nargs='+', help="Files to be processed.")
+par.add_argument("filenames", nargs='*',
+                 help="Files to be processed. Disregarded if -i is given.")
 par.add_argument('-r', '--reference-frame', default=None,
                  help=("Reference frame to align other frames to. If not "
                        "present, the first input filename will be used."))
@@ -41,6 +43,17 @@ par.add_argument("-s", "--separate-channels", default=False,
                        "By default, the green channel of images with the same "
                        "root filename is aligned, and the transform is then "
                        "applied to R and B."))
+par.add_argument("-S", "--save-identifications", 
+                 default="identifications.pickle",
+                 help="Save identifications to pickled file provided.")
+par.add_argument("--no-save-identifications", default=False, 
+                 action='store_true', 
+                 help="Do not save identifications to pickled file.")
+par.add_argument("-i", "--import-identifications", default=None,
+                 help="Import identifications from pickled file provided.")
+par.add_argument("--identify-only", default=False, action='store_true',
+                 help=("Do not perform the geometrical transformation; perform"
+                       "the identification only, then exit."))
 par.add_argument("-V", "--img-verbose", default=False, action='store_true',
                  help=("Produce verbose image output, i.e., png files showing"
                        "identifications, quads, etc."))
@@ -55,13 +68,13 @@ def align_frames(ident, green=True, img_verbose=False):
         calculated for the green channel, to which ident refers.
         If false, it only aligns the ident Identification object provided.
     '''
-    if id.ok == True:
-        if green:
+    if ident.ok == True:
+        if green and "_4.fits" not in ident.ukn.filepath:
             rgb_fnames = [ident.ukn.filepath.replace("_1.fits", "_0.fits"),
                           ident.ukn.filepath,
                           ident.ukn.filepath.replace("_1.fits", "_2.fits")]
         else:
-            rgb_frames = list(ident.ukn.filepath)
+            rgb_fnames = [ident.ukn.filepath]
 
         for fname in rgb_fnames:
             alipy.align.affineremap(fname, ident.trans, shape=output_shape,
@@ -77,33 +90,47 @@ def align_frames(ident, green=True, img_verbose=False):
 if __name__ == "__main__":
     args = par.parse_args()
     
-    if args.reference_frame is None:
-        args.reference_frame = args.filenames[0]
-
-    if args.separate_channels:
-        fnames = args.filenames
+    if args.import_identifications != None:
+        with open(args.import_identifications, 'rb') as fin:
+            identifications = pickle.load(fin)
+            fin.close()
+            if args.reference_frame is None:
+                args.reference_frame = identifications[0].ukn.filepath
     else:
-        # select green channels by filename, i.e., files ending in _1.fits
-        fnames = [fname for fname in args.filenames if "_1.fits" in fname]
+        if args.reference_frame is None:
+            args.reference_frame = args.filenames[0]
 
-    # Perform the actual identifications.
-    # TODO: Check the code of alipy.ident.run. It shouldn't be difficult to
-    #       parallelise this.
-    identifications = alipy.ident.run(args.reference_frame, fnames,
-                                      visu=args.img_verbose)
+        if args.separate_channels or "_4.fits" in args.filenames[-1]:
+            fnames = args.filenames
+        else:
+            # select green channels by filename, i.e., files ending in _1.fits
+            fnames = [fname for fname in args.filenames if "_1.fits" in fname]
+
+        # Perform the actual identifications.
+        # TODO: Check the code of alipy.ident.run. It shouldn't be difficult 
+        #       to parallelise this.
+        identifications = alipy.ident.run(args.reference_frame, fnames,
+                                          visu=args.img_verbose)
+        if not args.no_save_identifications:
+            with open(args.save_identifications, "wb") as fout:
+                pickle.dump(identifications, fout)
+                fout.close()
     
     # set output shape
-    output_shape = alipy.align.shape(ref_image)
+    output_shape = alipy.align.shape(args.reference_frame)
     
-    # actual alignement
-    if args.separate_channels:
-        partial_align_frames = align_frames(ident, green=False, 
-                                            img_verbose=args.img_verbose)
+    # actual alignement, i.e. geometrical transformation
+    if args.identify_only:
+        exit(0)
     else:
-        partial_align_frames = align_frames(ident, green=True, 
-                                            img_verbose=args.img_verbose)
+        if args.separate_channels:
+            partial_align_frames = partial(align_frames, green=False, 
+                                           img_verbose=args.img_verbose)
+        else:
+            partial_align_frames = partial(align_frames, green=True, 
+                                           img_verbose=args.img_verbose)
 
-    with Pool() as pool:
+        pool = Pool()
         pool.map(partial_align_frames, identifications)
 
 
