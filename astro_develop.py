@@ -33,7 +33,7 @@ import pyfits
 
 import numpy as np
 
-par = ap.ArgumentParser(prog="rawtofits",
+par = ap.ArgumentParser(prog="astro_develop",
                         description="Convert RAW image files to FITS.")
 par.add_argument("filenames", nargs='+', help="Files to be processed.")
 par.add_argument("--no-demosaic", default=False, action="store_true", 

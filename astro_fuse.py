@@ -28,7 +28,7 @@ import argparse as ap
 import pyfits
 import re
 
-par = ap.ArgumentParser(prog="combine_frames",
+par = ap.ArgumentParser(prog="astro_fuse",
                         description=("Combine different frames into a single "
                                      "image."))
 par.add_argument("filenames", nargs='+', help="Files to be processed")

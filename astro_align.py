@@ -30,8 +30,9 @@ from multiprocessing import Pool
 from functools import partial
 import pickle
 
-par = ap.ArgumentParser(prog="rawtofits",
-                        description="Convert RAW image files to FITS.")
+par = ap.ArgumentParser(prog="astro_align",
+                        description=("Align multiple frames to a reference "
+                                     "frame."))
 par.add_argument("filenames", nargs='*',
                  help="Files to be processed. Disregarded if -i is given.")
 par.add_argument('-r', '--reference-frame', default=None,
