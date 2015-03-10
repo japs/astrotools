@@ -37,7 +37,7 @@ if __name__ == "__main__":
     for fname in args.filenames:
         frame_hdulist = pyfits.open(fname, memmap=True, mode='readonly')
         frame = frame_hdulist[0]
-        imgplot = plt.imshow(frame.data)
+        imgplot = plt.imshow(1 - frame.data)
         imgplot.set_cmap('Greys')
         plt.show()
     exit(0)
