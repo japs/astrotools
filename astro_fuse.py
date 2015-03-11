@@ -35,12 +35,37 @@ par.add_argument("filenames", nargs='+', help="Files to be processed")
 par.add_argument("-a", "--average", default=True, action="store_true",
                  help=("Average together the input frames "
                        "(this is the default behaviour)."))
+par.add_argument("-m", "--median", default=False, action="store_true",
+                 help="Median of the input frames.")
 par.add_argument("-r", '--rows', type=int, default=None,
                  help="Average this many rows at a time. (Default: optimise)")
 par.add_argument("-v", '--verbose', default=False, action='store_true',
                  help="Print verbose output.")
 par.add_argument("-o", "--output-file", default="output.fits",
                  help="Output file name.")
+
+
+def median(frames, args):
+    output = np.zeros(frames[0].shape)
+    Nframes = len(frames)
+    shape = frames[0].shape
+    
+    chunks = shape[0] // args.rows
+    remainder = shape[0] % args.rows
+
+    for i in range(chunks):
+        start_row =       i * args.rows
+        end_row   = (i + 1) * args.rows
+        output[start_row:end_row, ...] = \
+                np.median([f.data[start_row:end_row, ...] for f in frames],
+                          axis=0)
+        if args.verbose:
+            stderr.write("approximately {}% done.\r".format(end_row/shape[0]))
+    if remainder != 0:
+        output[end_row:, ...] = \
+                np.median([f.data[end_row:, ...] for f in frames],
+                          axis=0)
+    return output
 
 
 if __name__ == "__main__":
@@ -67,10 +92,18 @@ if __name__ == "__main__":
     out_frame = np.zeros(shape=size, dtype=np.float64)
    
     # if not provided by user, optimise the number of rows to average at once.
+    # TODO: write an optimiser that automatically calculates the optimal number
+    #       of rows to compute at once. Also, double check the actual working
+    #       of the FITS buffering: chances are that this is overkill and 
+    #       automatic FITS buffering already takes care of not crashing the 
+    #       machine.
     if args.rows == None:
-        args.rows = 10
-
-    if args.average:
+        args.rows = 100
+    
+    if args.median:
+        out_frame = median(input_frames, args=args)
+        args.average = False
+    elif args.average:
         # average the input frames
         for n, frame in enumerate(input_frames):
             if args.verbose:
@@ -83,6 +116,6 @@ if __name__ == "__main__":
     hdu.header = input_frames[0].header
     if not re.search("\.fits$", args.output_file):
         args.output += ".fits"
-    hdu.writeto(args.output_file)
+    hdu.writeto(args.output_file, clobber=True)
         
     exit(0)
