@@ -33,6 +33,20 @@ What's included
 * 'astro_fitspreview.py'  
   A very dumb, matplotlib-based fits previewer.
 
+To do
+=====
+* 'Frame calibration'  
+  Also check if it is possible to apply dark subtraction 'before' demosaicing.
+
+* 'Lens correction'  
+
+* 'pyIRAF alignement with distortion correction'
+  This only really requires a line of code in astro_align and the installation 
+  of the dependencies (see alipy docs).
+
+* 'Multiple HDU fits file'  
+  Check if feasable to keep RGB channels in the same file, using multiple HDUs.
+
 A word on lincensing
 ====================
 A good part of the code was blatantly copied from tutorials and documentation 
