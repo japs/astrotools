@@ -30,6 +30,9 @@ What's included
 * 'astro_fuse.py'  
   Takes the aligned frames and output the combined frame.
 
+* 'astro_fitspreview.py'  
+  A very dumb, matplotlib-based fits previewer.
+
 A word on lincensing
 ====================
 A good part of the code was blatantly copied from tutorials and documentation 
@@ -75,7 +78,11 @@ the authors for their job.
   [Kelsey's version](https://github.com/kjordahl/cr2fits).
 
 
-Sources of inspiration
-======================
+Sources of inspiration and further reading
+==========================================
 Definitely, [Kelsey's weblog](http://kjordahl.net/blog/) contains all one 
 needs to bootstrap a project like this.
+
+[Using Image Calibration to Reduce Noise in Digital 
+Images](http://photo.net/learn/dark_noise/) looks like a good place to start
+implementing the dark/bias/flat frame processing.
