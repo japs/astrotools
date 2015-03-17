@@ -27,6 +27,7 @@ from multiprocessing import Pool
 from subprocess import check_output
 import argparse as ap
 from functools import partial
+import lensfunpy as lfp
 
 import rawpy as rp
 import pyfits
@@ -38,7 +39,10 @@ par = ap.ArgumentParser(prog="astro_develop",
 par.add_argument("filenames", nargs='+', help="Files to be processed.")
 par.add_argument("--no-demosaic", default=False, action="store_true", 
                  help="Use raw sensor data, without demosaicing..")
-
+par.add_argument("-l", '--lens-correction', default=False, action='store_true',
+                 help="Apply lens distortion correction.")
+par.add_argument("--output-channel", nargs="+", default=[0, 1, 2],
+                 help="Select output channels. Default is [0 1 2] (RGB).")
 
 DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
                                  use_camera_wb=True,
@@ -102,6 +106,26 @@ def pack_FITS(fname, img_data, header, channel):
     hdu.writeto("{}_{}.fits".format(basename, channel))
 
 
+def correct_distortion(img_array, img_exif)
+    cam_maker   = img_exif["Make"]
+    cam_model   = img_exif["Camera Model Name"]
+    lens_id     = img_exif["Lens ID"]
+    crop_factor = img_exif["Scale Factor To 35 mm Equivalent"]
+    aperture    = img_exif['F Number']
+    focal       = img_exif['Focal Length']
+    distance    = img_exif["Focus Distance"]
+
+    db = lfp.Database()
+    camera = db.find_cameras(cam_maker, cam_model)[0]
+    lens   = db.find_lenses(camera, lens=lens_id)[0]
+    img_shape = img_array.shape
+    modifier = lfp.Modifier(lens, camera.crop_factor, 
+                            img_shape[0], img_shape[1])
+    modifier.initialise(focal, aperture, distance, pixel_format=np.uint16)
+    undistort_coords = modifier.apply_geometry_distortion()
+    img_undistorted = cv2.remap(img_array, undistort_coords, None,
+                                cv2.INTER_LANCZOS4)
+    return img_undistorted
 
 def process_file(fname, args):
     '''
@@ -112,11 +136,15 @@ def process_file(fname, args):
     fits_header = FITS_header(fname, img_exif)
     if args.no_demosaic:
         img_array = raw_img.raw_image
-        pack_FITS(fname, img_array, fits_header, 4)
+        args.output_channel = [4]
     else:
         img_array = raw_to_nparray(raw_img)
-        for channel in [0, 1, 2]:
-            pack_FITS(fname, img_array[:, :, channel], fits_header, channel)
+
+    if args.lens_correction:
+        img_array = correct_distortion(img_array, img_exif)
+        
+    for channel in args.output_channel:
+        pack_FITS(fname, img_array[:, :, channel], fits_header, channel)
 
 
 
