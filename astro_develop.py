@@ -24,11 +24,11 @@
 
 from sys import stdin, stdout, stderr, argv, exit
 from multiprocessing import Pool
+from subprocess import check_output
 import argparse as ap
 from functools import partial
 
 import rawpy as rp
-import exiftool            #git://github.com/smarnach/pyexiftool.git
 import pyfits
 
 import numpy as np
@@ -66,19 +66,22 @@ def extract_exif(fname):
     '''
     Extracts the EXIF metadata, returned as a dictionary.
     '''
-    with exiftool.ExifTool() as et:
-        metadata = et.get_metadata(fname)
+    metadata = {}
+    output = check_output(["exiftool", fname]).decode('utf-8')
+    for line in output.splitlines():
+        tag, value = line.split(":", maxsplit=1)
+        metadata[tag.strip()] = value.strip()
     return metadata
 
 def FITS_header(fname, img_exif):
     hdu_header = pyfits.Header()
-    hdu_header.set("OBSTIME", img_exif['EXIF:CreateDate'])
-    hdu_header.set('EXPTIME', img_exif['EXIF:ExposureTime'])
-    hdu_header.set('APERTUR', img_exif['EXIF:FNumber'])
-    hdu_header.set('ISO',     img_exif['EXIF:ISO'])
-    hdu_header.set('FOCAL',   img_exif['EXIF:FocalLength'])
+    hdu_header.set("OBSTIME", img_exif['Create Date'])
+    hdu_header.set('EXPTIME', img_exif['Exposure Time'])
+    hdu_header.set('APERTUR', img_exif['F Number'])
+    hdu_header.set('ISO',     img_exif['ISO'])
+    hdu_header.set('FOCAL',   img_exif['Focal Length'])
     hdu_header.set('ORIGIN',  fname)
-    hdu_header.set('CAMERA',  img_exif['EXIF:Model'])
+    hdu_header.set('CAMERA',  img_exif['Camera Model Name'])
 
     hdu_header.add_comment('EXPTIME is in seconds.')
     hdu_header.add_comment('APERTUR is the ratio as in f/APERTUR')
