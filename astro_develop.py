@@ -74,7 +74,9 @@ def extract_exif(fname):
     output = check_output(["exiftool", fname]).decode('utf-8')
     for line in output.splitlines():
         tag, value = line.split(":", maxsplit=1)
-        metadata[tag.strip()] = value.strip()
+        tag = tag.strip()
+        if tag not in metadata:
+            metadata[tag] = value.strip()
     return metadata
 
 def FITS_header(fname, img_exif):
@@ -106,14 +108,14 @@ def pack_FITS(fname, img_data, header, channel):
     hdu.writeto("{}_{}.fits".format(basename, channel))
 
 
-def correct_distortion(img_array, img_exif)
+def correct_distortion(img_array, img_exif):
     cam_maker   = img_exif["Make"]
     cam_model   = img_exif["Camera Model Name"]
     lens_id     = img_exif["Lens ID"]
-    crop_factor = img_exif["Scale Factor To 35 mm Equivalent"]
-    aperture    = img_exif['F Number']
-    focal       = img_exif['Focal Length']
-    distance    = img_exif["Focus Distance"]
+    crop_factor = float(img_exif["Scale Factor To 35 mm Equivalent"])
+    aperture    = float(img_exif['F Number'])
+    focal       = float(img_exif['Focal Length'][:-3])
+    distance    = float(img_exif["Focus Distance"][:-2])
 
     db = lfp.Database()
     camera = db.find_cameras(cam_maker, cam_model)[0]
@@ -121,7 +123,7 @@ def correct_distortion(img_array, img_exif)
     img_shape = img_array.shape
     modifier = lfp.Modifier(lens, camera.crop_factor, 
                             img_shape[0], img_shape[1])
-    modifier.initialise(focal, aperture, distance, pixel_format=np.uint16)
+    modifier.initialize(focal, aperture, distance, pixel_format=np.uint16)
     undistort_coords = modifier.apply_geometry_distortion()
     img_undistorted = cv2.remap(img_array, undistort_coords, None,
                                 cv2.INTER_LANCZOS4)
