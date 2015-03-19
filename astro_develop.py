@@ -33,6 +33,7 @@ import rawpy as rp
 import pyfits
 
 import numpy as np
+from scipy.ndimage import map_coordinates
 
 par = ap.ArgumentParser(prog="astro_develop",
                         description="Convert RAW image files to FITS.")
@@ -95,7 +96,6 @@ def FITS_header(fname, img_exif):
     return hdu_header
 
 
-
 def pack_FITS(fname, img_data, header, channel):    
     '''
     Creates the actual FITS.
@@ -116,6 +116,12 @@ def correct_distortion(img_array, img_exif):
     aperture    = float(img_exif['F Number'])
     focal       = float(img_exif['Focal Length'][:-3])
     distance    = float(img_exif["Focus Distance"][:-2])
+    
+    try:
+        height, width, channels = img_array.shape
+    except ValueError: # only one channel
+        height, width = img_array.shape
+        channels = 1
 
     db = lfp.Database()
     camera = db.find_cameras(cam_maker, cam_model)[0]
@@ -125,9 +131,19 @@ def correct_distortion(img_array, img_exif):
                             img_shape[0], img_shape[1])
     modifier.initialize(focal, aperture, distance, pixel_format=np.uint16)
     undistort_coords = modifier.apply_geometry_distortion()
-    img_undistorted = cv2.remap(img_array, undistort_coords, None,
-                                cv2.INTER_LANCZOS4)
-    return img_undistorted
+    undistort_coords = np.rollaxis(undistort_coords, 2)
+
+    if channels == 1:
+        img_undistorted = map_coordinates(img_array, undistort_coords, 
+                                          order=2)
+        return img_undistorted
+    else:
+        out_channels = []
+        for c in range(channels):
+            out_channels.append(map_coordinates(img_array[:, :, c], 
+                                                undistort_coords, order=2))
+        return np.dstack(out_channels)
+
 
 def process_file(fname, args):
     '''
@@ -146,7 +162,10 @@ def process_file(fname, args):
         img_array = correct_distortion(img_array, img_exif)
         
     for channel in args.output_channel:
-        pack_FITS(fname, img_array[:, :, channel], fits_header, channel)
+        if args.no_demosaic:
+            pack_FITS(fname, img_array, fits_header, channel)
+        else:
+            pack_FITS(fname, img_array[:, :, channel], fits_header, channel)
 
 
 
