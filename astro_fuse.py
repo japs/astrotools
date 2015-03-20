@@ -60,7 +60,8 @@ def median(frames, args):
                 np.median([f.data[start_row:end_row, ...] for f in frames],
                           axis=0)
         if args.verbose:
-            stderr.write("approximately {}% done.\r".format(end_row/shape[0]))
+            msg = "approximately {:.1%} done.\r"
+            stderr.write(msg.format(end_row/shape[0]))
     if remainder != 0:
         output[end_row:, ...] = \
                 np.median([f.data[end_row:, ...] for f in frames],
