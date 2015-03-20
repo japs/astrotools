@@ -45,11 +45,22 @@ par.add_argument("-l", '--lens-correction', default=False, action='store_true',
 par.add_argument("--output-channel", nargs="+", default=[0, 1, 2],
                  help="Select output channels. Default is [0 1 2] (RGB).")
 
-DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
-                                 use_camera_wb=True,
-                                 output_color=rp.ColorSpace.sRGB,
-                                 output_bps=16)
-
+DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE, 
+                                 use_camera_wb=True, 
+                                 use_auto_wb=False, 
+                                 user_wb=None,
+                                 output_color=rp.ColorSpace.sRGB, 
+                                 output_bps=16, 
+                                 user_flip=None, 
+                                 user_black=None,
+                                 user_sat=None, 
+                                 no_auto_bright=True, 
+                                 auto_bright_thr=None,
+                                 adjust_maximum_thr=0.75, 
+                                 exp_shift=None, 
+                                 exp_preserve_highlights=0.0,
+                                 gamma=None, 
+                                 bad_pixels_path=None)
 
 UNDISTORT_COORDS = {}
 
@@ -163,6 +174,9 @@ def process_file(fname, args):
         args.output_channel = [4]
     else:
         img_array = raw_to_nparray(raw_img)
+        print (img_array[2000:2010, 3000:3010, 0])
+        print (img_array[2000:2010, 3000:3010, 1])
+        print (img_array[2000:2010, 3000:3010, 2])
 
     if args.lens_correction:
         img_array = correct_distortion(img_array, img_exif)
