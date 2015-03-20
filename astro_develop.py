@@ -23,7 +23,7 @@
 #
 
 from sys import stdin, stdout, stderr, argv, exit
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from subprocess import check_output
 import argparse as ap
 from functools import partial
@@ -178,7 +178,12 @@ def process_file(fname, args):
 if __name__ == "__main__":
     args = par.parse_args()
 
-    with Pool() as pool:
+    if args.lens_correction:
+        nprocesses = cpu_count() // 2
+    else:
+        nprocesses = cpu_count()
+
+    with Pool(nprocesses) as pool:
         partial_process_file = partial(process_file, args=args)
         pool.map(partial_process_file, args.filenames)
 
