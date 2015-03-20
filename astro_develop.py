@@ -51,6 +51,8 @@ DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
                                  output_bps=16)
 
 
+UNDISTORT_COORDS = {}
+
 def open_raw_image(fname):
     '''
     Read the raw image and return the corresponding object
@@ -122,16 +124,20 @@ def correct_distortion(img_array, img_exif):
     except ValueError: # only one channel
         height, width = img_array.shape
         channels = 1
-
-    db = lfp.Database()
-    camera = db.find_cameras(cam_maker, cam_model)[0]
-    lens   = db.find_lenses(camera, lens=lens_id)[0]
-    img_shape = img_array.shape
-    modifier = lfp.Modifier(lens, camera.crop_factor, 
-                            img_shape[0], img_shape[1])
-    modifier.initialize(focal, aperture, distance, pixel_format=np.uint16)
-    undistort_coords = modifier.apply_geometry_distortion()
-    undistort_coords = np.rollaxis(undistort_coords, 2)
+    
+    if lens_id not in UNDISTORT_COORDS:
+        db = lfp.Database()
+        camera = db.find_cameras(cam_maker, cam_model)[0]
+        lens   = db.find_lenses(camera, lens=lens_id)[0]
+        img_shape = img_array.shape
+        modifier = lfp.Modifier(lens, camera.crop_factor, 
+                                img_shape[0], img_shape[1])
+        modifier.initialize(focal, aperture, distance, pixel_format=np.uint16)
+        undistort_coords = modifier.apply_geometry_distortion()
+        undistort_coords = np.rollaxis(undistort_coords, 2)
+        UNDISTORT_COORDS[lens_id] = undistort_coords
+    else:
+        undistort_coords = UNDISTORT_COORDS[lens_id]
 
     if channels == 1:
         img_undistorted = map_coordinates(img_array, undistort_coords, 

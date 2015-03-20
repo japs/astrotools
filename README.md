@@ -38,8 +38,6 @@ To do
 * 'Frame calibration'  
   Also check if it is possible to apply dark subtraction 'before' demosaicing.
 
-* 'Lens correction'  
-
 * 'pyIRAF alignement with distortion correction'
   This only really requires a line of code in astro_align and the installation 
   of the dependencies (see alipy docs).
