@@ -43,6 +43,8 @@ par.add_argument("-v", '--verbose', default=False, action='store_true',
                  help="Print verbose output.")
 par.add_argument("-o", "--output-file", default="output.fits",
                  help="Output file name.")
+par.add_argument("-j", "--join-channels", default=False, action='store_true',
+                 help="Join THREE frames into an RGB tiff image.")
 
 
 def median(frames, args):
@@ -71,7 +73,11 @@ def median(frames, args):
 
 if __name__ == "__main__":
     args = par.parse_args()
-    
+
+    # make sure the output is well formatted
+    if not re.search("\.fits$", args.output_file):
+        args.output_file += ".fits"
+   
     input_frames = []
     # Read files
     for fname in args.filenames:
@@ -79,6 +85,26 @@ if __name__ == "__main__":
         # input_frames list.
         frame_hdulist = pyfits.open(fname, memmap=True, mode='readonly')
         input_frames.append(frame_hdulist[0])
+
+    if args.join_channels:
+        # Use three frames to pack an RGB tiff.
+        # the highlight is stretched to the highest value representable in 16
+        # bits.
+        from skimage.io import imsave
+        clip = 2**16 - 1
+        red   = input_frames[0].data
+        red_scale = clip / np.max(red)
+        red = np.uint16(red * red_scale)
+        green = input_frames[1].data
+        green_scale = clip / np.max(green)
+        green = np.uint16(green * green_scale)
+        blue  = input_frames[2].data
+        blue_scale = clip / np.max(blue)
+        blue = np.uint16(blue * blue_scale)
+        out = np.dstack((red, green, blue))
+        imsave(args.output_file.replace("fits", "tiff"), out, 
+               plugin='freeimage')
+        exit(0)
 
     # determine number of input files
     N_frames = len(input_frames)
@@ -115,8 +141,6 @@ if __name__ == "__main__":
     # write output FITS
     hdu = pyfits.PrimaryHDU(out_frame)
     hdu.header = input_frames[0].header
-    if not re.search("\.fits$", args.output_file):
-        args.output += ".fits"
     hdu.writeto(args.output_file, clobber=True)
         
     exit(0)
