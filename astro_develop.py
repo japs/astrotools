@@ -120,7 +120,7 @@ def pack_FITS(fname, img_data, header, channel):
     hdu.header.set('FILTER',  channel)
 
     basename = fname.split('.')[0]
-    hdu.writeto("{}_{}.fits".format(basename, channel))
+    hdu.writeto("{}_{}.fits".format(basename, channel), clobber=True)
 
 
 def correct_distortion(img_array, img_exif):
