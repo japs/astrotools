@@ -52,7 +52,7 @@ DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
                                  output_color=rp.ColorSpace.sRGB, 
                                  output_bps=16, 
                                  user_flip=None, 
-                                 user_black=None,
+                                 user_black=0,
                                  user_sat=None, 
                                  no_auto_bright=True, 
                                  auto_bright_thr=None,
@@ -174,9 +174,6 @@ def process_file(fname, args):
         args.output_channel = [4]
     else:
         img_array = raw_to_nparray(raw_img)
-        print (img_array[2000:2010, 3000:3010, 0])
-        print (img_array[2000:2010, 3000:3010, 1])
-        print (img_array[2000:2010, 3000:3010, 2])
 
     if args.lens_correction:
         img_array = correct_distortion(img_array, img_exif)
