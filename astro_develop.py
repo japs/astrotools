@@ -23,7 +23,7 @@
 #
 
 from sys import stdin, stdout, stderr, argv, exit
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, Value
 from subprocess import check_output
 import argparse as ap
 from functools import partial
@@ -44,6 +44,8 @@ par.add_argument("-l", '--lens-correction', default=False, action='store_true',
                  help="Apply lens distortion correction.")
 par.add_argument("--output-channel", nargs="+", default=[0, 1, 2],
                  help="Select output channels. Default is [0 1 2] (RGB).")
+par.add_argument("-v", '--verbose', default=False, action='store_true',
+                 help="Print verbose output.")
 
 DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE, 
                                  use_camera_wb=True, 
@@ -183,11 +185,18 @@ def process_file(fname, args):
             pack_FITS(fname, img_array, fits_header, channel)
         else:
             pack_FITS(fname, img_array[:, :, channel], fits_header, channel)
+    if args.verbose:
+        with DONE.get_lock():
+            DONE.value += 1
+        stderr.write("{:.1%}\r".format(DONE.value / NFRAMES.value))
 
 
 
 if __name__ == "__main__":
     args = par.parse_args()
+    if args.verbose:
+        NFRAMES = Value('i', len(args.filenames))
+        DONE = Value('i', 0)
 
     if args.lens_correction:
         nprocesses = cpu_count() // 2
