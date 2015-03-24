@@ -61,7 +61,7 @@ DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
                                  adjust_maximum_thr=0.75, 
                                  exp_shift=None, 
                                  exp_preserve_highlights=0.0,
-                                 gamma=None, 
+                                 gamma=(1., 1.), 
                                  bad_pixels_path=None)
 
 UNDISTORT_COORDS = {}
