@@ -79,8 +79,7 @@ def raw_to_nparray(raw_img):
     array.
     '''
     # demosaic and stuff...aka dcraw develop
-    raw_img.dcraw_process(DCRAW_DEFAULT_PARAMS)
-    return raw_img.dcraw_make_mem_image()
+    return raw_img.postprocess(DCRAW_DEFAULT_PARAMS)
 
 def extract_exif(fname):
     '''
