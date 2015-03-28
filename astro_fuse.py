@@ -47,8 +47,8 @@ par.add_argument("-j", "--join-channels", default=False, action='store_true',
                  help="Join THREE frames into an RGB tiff image.")
 
 
-def median(frames, args):
-    output = np.zeros(frames[0].shape)
+def fuse_median(frames, args):
+    output = np.zeros(frames[0].shape, dtype=np.float32)
     Nframes = len(frames)
     shape = frames[0].shape
     
@@ -71,6 +71,48 @@ def median(frames, args):
     return output
 
 
+def fuse_mean(input_frames, args):
+    # determine number of input files
+    N_frames = len(input_frames)
+
+    # Check the size of the first frame, and use it as output frame size.
+    # If not all the frames share the same size, something bad is going to 
+    # happen by the time numpy comes into play. Hence, we do not worry about it
+    # here, and instead wait for an exception to be raised somewhere.
+    size = input_frames[0].data.shape
+ 
+    # create the output array
+    out_frame = np.zeros(shape=size, dtype=np.float32)
+    # average the input frames
+    for n, frame in enumerate(input_frames):
+        if args.verbose:
+            stderr.write("Averaging frame {}/{}\n".format(n, N_frames))
+            out_frame += frame.data
+    out_frame /= N_frames
+    return out_frame
+
+
+def fuse_join_channels(frames, args):
+    '''
+    Use three frames to pack an RGB tiff.
+    the highlight is stretched to the highest value representable in 16
+    bits.
+    '''
+    from skimage.io import imsave
+    clip = 2**16 - 1
+    red   = input_frames[0].data
+    red_scale = clip / np.max(red)
+    red = np.uint16(red * red_scale)
+    green = input_frames[1].data
+    green_scale = clip / np.max(green)
+    green = np.uint16(green * green_scale)
+    blue  = input_frames[2].data
+    blue_scale = clip / np.max(blue)
+    blue = np.uint16(blue * blue_scale)
+    out = np.dstack((red, green, blue))
+    imsave(args.output_file.replace("fits", "tiff"), out, plugin='freeimage')
+
+
 if __name__ == "__main__":
     args = par.parse_args()
 
@@ -87,37 +129,9 @@ if __name__ == "__main__":
         input_frames.append(frame_hdulist[0])
 
     if args.join_channels:
-        # Use three frames to pack an RGB tiff.
-        # the highlight is stretched to the highest value representable in 16
-        # bits.
-        from skimage.io import imsave
-        clip = 2**16 - 1
-        red   = input_frames[0].data
-        red_scale = clip / np.max(red)
-        red = np.uint16(red * red_scale)
-        green = input_frames[1].data
-        green_scale = clip / np.max(green)
-        green = np.uint16(green * green_scale)
-        blue  = input_frames[2].data
-        blue_scale = clip / np.max(blue)
-        blue = np.uint16(blue * blue_scale)
-        out = np.dstack((red, green, blue))
-        imsave(args.output_file.replace("fits", "tiff"), out, 
-               plugin='freeimage')
+        fuse_join_channels(input_frames, args)
         exit(0)
 
-    # determine number of input files
-    N_frames = len(input_frames)
-
-    # Check the size of the first frame, and use it as output frame size.
-    # If not all the frames share the same size, something bad is going to 
-    # happen by the time numpy comes into play. Hence, we do not worry about it
-    # here, and instead wait for an exception to be raised somewhere.
-    size = input_frames[0].data.shape
-    
-    # create the output array
-    out_frame = np.zeros(shape=size, dtype=np.float64)
-   
     # if not provided by user, optimise the number of rows to average at once.
     # TODO: write an optimiser that automatically calculates the optimal number
     #       of rows to compute at once. Also, double check the actual working
@@ -128,16 +142,11 @@ if __name__ == "__main__":
         args.rows = 100
     
     if args.median:
-        out_frame = median(input_frames, args=args)
+        out_frame = fuse_median(input_frames, args=args)
         args.average = False
     elif args.average:
-        # average the input frames
-        for n, frame in enumerate(input_frames):
-            if args.verbose:
-                stderr.write("Averaging frame {}/{}\n".format(n, N_frames))
-            out_frame += frame.data
-        out_frame /= N_frames
-
+        out_frame = fuse_mean(input_frames, args=args)
+    
     # write output FITS
     hdu = pyfits.PrimaryHDU(out_frame)
     hdu.header = input_frames[0].header
