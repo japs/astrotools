@@ -87,7 +87,7 @@ def fuse_mean(input_frames, args):
     for n, frame in enumerate(input_frames):
         if args.verbose:
             stderr.write("Averaging frame {}/{}\n".format(n, N_frames))
-            out_frame += frame.data
+        out_frame += frame.data
     out_frame /= N_frames
     return out_frame
 
