@@ -42,7 +42,7 @@ par.add_argument("--no-demosaic", default=False, action="store_true",
                  help="Use raw sensor data, without demosaicing..")
 par.add_argument("-l", '--lens-correction', default=False, action='store_true',
                  help="Apply lens distortion correction.")
-par.add_argument("--output-channel", nargs="+", default=[0, 1, 2],
+par.add_argument('-c', "--output-channel", nargs="+", default=[0, 1, 2],
                  help="Select output channels. Default is [0 1 2] (RGB).")
 par.add_argument("-v", '--verbose', default=False, action='store_true',
                  help="Print verbose output.")
@@ -58,10 +58,10 @@ DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE,
                                  user_sat=None, 
                                  no_auto_bright=True, 
                                  auto_bright_thr=None,
-                                 adjust_maximum_thr=0.75, 
+                                 adjust_maximum_thr=0, 
                                  exp_shift=None, 
                                  exp_preserve_highlights=0.0,
-                                 gamma=(1., 1.), 
+                                 gamma=None, #(1., 1.), 
                                  bad_pixels_path=None)
 
 UNDISTORT_COORDS = {}
@@ -80,6 +80,21 @@ def raw_to_nparray(raw_img):
     '''
     # demosaic and stuff...aka dcraw develop
     return raw_img.postprocess(DCRAW_DEFAULT_PARAMS)
+
+
+def dcraw_develop(fname):
+    '''
+    Call dcraw -w -6 on the given file and extract the data.
+    '''
+    with NamedTemporaryFile() as tmpfile:
+    #with open('/tmp/fname' + ".tiff", 'w+b') as tmpfile:
+        dcraw_output = check_output(['dcraw', '-w', '-6', '-c', '-T', fname])
+        tmpfile.write(dcraw_output)
+
+        image = imread(tmpfile.name, plugin='freeimage')
+    return image
+
+    
 
 def extract_exif(fname):
     '''
