@@ -25,11 +25,13 @@
 from sys import stdin, stdout, stderr, argv, exit
 from multiprocessing import Pool, cpu_count, Value
 from subprocess import check_output
+from tempfile import NamedTemporaryFile
 import argparse as ap
 from functools import partial
 import lensfunpy as lfp
 
 import rawpy as rp
+from skimage.io import imread
 import pyfits
 
 import numpy as np
@@ -46,6 +48,12 @@ par.add_argument('-c', "--output-channel", nargs="+", default=[0, 1, 2],
                  help="Select output channels. Default is [0 1 2] (RGB).")
 par.add_argument("-v", '--verbose', default=False, action='store_true',
                  help="Print verbose output.")
+par.add_argument('--use-libraw', default=False, action='store_true',
+                 help="Use libraw for raw development.")
+par.add_argument('--use-dcraw', default=True, action='store_true',
+                 help="Use dcraw for raw development (default).")
+
+
 
 DCRAW_DEFAULT_PARAMS = rp.Params(demosaic_algorithm=rp.DemosaicAlgorithm.LMMSE, 
                                  use_camera_wb=True, 
@@ -93,7 +101,6 @@ def dcraw_develop(fname):
 
         image = imread(tmpfile.name, plugin='freeimage')
     return image
-
     
 
 def extract_exif(fname):
@@ -182,14 +189,18 @@ def process_file(fname, args):
     '''
     Convenience function that wraps the whole postprocessing from RAW to FITS.
     '''
-    raw_img = open_raw_image(fname)
     img_exif = extract_exif(fname)
     fits_header = FITS_header(fname, img_exif)
-    if args.no_demosaic:
-        img_array = raw_img.raw_image
-        args.output_channel = [4]
-    else:
-        img_array = raw_to_nparray(raw_img)
+
+    if args.use_libraw:
+        raw_img = open_raw_image(fname)
+        if args.no_demosaic:
+            img_array = raw_img.raw_image
+            args.output_channel = [4]
+        else:
+            img_array = raw_to_nparray(raw_img)
+    elif args.use_dcraw:
+        img_array = dcraw_develop(fname)
 
     if args.lens_correction:
         img_array = correct_distortion(img_array, img_exif)
@@ -211,6 +222,9 @@ if __name__ == "__main__":
     if args.verbose:
         NFRAMES = Value('i', len(args.filenames))
         DONE = Value('i', 0)
+
+    if args.use_libraw:
+        args.use_dcraw = False
 
     if args.lens_correction:
         nprocesses = cpu_count() // 2
