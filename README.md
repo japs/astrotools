@@ -51,9 +51,9 @@ A good part of the code was blatantly copied from tutorials and documentation
 pages throughout the web. I'm assuming that the documentation of free software 
 is free itself, and can be redistributed here under the terms of the GPL.
 This should be true for GPL as well as MIT/BSD code.
-However, when looking for code that would help this project, it is sometimes 
-not clear under which terms one can a code snippet. To the best of my 
-knowledge, the code I used falls into allowed categories.
+However, when looking for code that would be useful for this project, it is 
+sometimes not clear under which terms one can copy a code snippet. To the best 
+of my knowledge, the code I used falls into allowed categories.
 
 
 Third party libraries
