@@ -42,6 +42,9 @@ par.add_argument('-s', '--sigma', default=3, type=float,
                        "smaller than mean + sigma standard deviations."))
 
 def extract_frames(fname, frame_rate=25, fout_root=None):
+    '''
+    Extracts frames from video. It requires ffmpeg to be installed.
+    '''
     if fout_root is None:
         fout_root = fname
     _fout_root = fout_root + "-%5d.tif"
@@ -52,12 +55,19 @@ def extract_frames(fname, frame_rate=25, fout_root=None):
 
 
 def load_frame(fname, channel="To_Implement"):
+    '''
+    Loads a single frame.
+    '''
     print("loading " + fname)
     image = imread(fname, plugin='freeimage')
     return image
 
 
 def distance(reference, other_fnames):
+    '''
+    Computes the distance between a frame F and a reference frame R.
+        d = \sum_ijk (R-F)_ijk^2
+    '''
     distances = np.zeros(len(other_fnames))
 
     for idx, fname in enumerate(other_fnames):
@@ -69,6 +79,10 @@ def distance(reference, other_fnames):
 
 
 def fuse_mean(frame_fnames, distances, sum_frac=0.25):
+    '''
+    Averages together the sum_frac fraction of frames with the least distance
+    from the reference frame.
+    '''
     #dumb but for now ok
     frame = load_frame(frame_fnames[0])
     #
@@ -97,12 +111,16 @@ if __name__ == "__main__":
     args = par.parse_args()
 
     if args.video:
+        # Extract frames from video.
         for f in args.filenames:
             extract_frames(f)
 
     if args.reference is not None:
+        # A reference frame was passed.
+        # 1) load reference frame and compute distances to other frames.
         reference_frame = load_frame(args.reference)
         distances = distance(reference_frame, args.filenames)
+        # 2) average together.
         image = fuse_mean(args.filenames, distances, 
                           sum_frac=0.25)
         imsave("./output.tif", image, plugin="freeimage")
