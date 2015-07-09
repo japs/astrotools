@@ -67,6 +67,16 @@ def distance(reference, other_fnames):
     '''
     Computes the distance between a frame F and a reference frame R.
         d = \sum_ijk (R-F)_ijk^2
+
+    Parameters
+    ----------
+    reference: the actual frame as ndarray.
+    other_fnames: list of file names of the other frames to be analysed.
+
+    Returns
+    -------
+    ditances: array of distances (float) in the same order as the file name
+              list.
     '''
     distances = np.zeros(len(other_fnames))
 
