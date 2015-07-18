@@ -37,9 +37,11 @@ par.add_argument('-r', '--reference', type=str, default=None,
                  help="Reference frame.")
 par.add_argument('-e', '--video', default=False, action="store_true",
                  help="Extract frames from video(s).")
-par.add_argument('-s', '--sigma', default=3, type=float,
-                 help=("Average frames with distance from references "
-                       "smaller than mean + sigma standard deviations."))
+par.add_argument('-f', '--fraction', default=0.25, type=float,
+                 help=("Only average this fraction of frames, the ones with "
+                       "the closest distance to the reference."))
+par.add_argument('-o', '--output', default="output.tif",
+                 help="Output file name")
 
 def extract_frames(fname, frame_rate=25, fout_root=None):
     '''
@@ -82,7 +84,7 @@ def distance(reference, other_fnames):
 
     for idx, fname in enumerate(other_fnames):
         frame = load_frame(fname)
-        difference = reference - frame
+        difference = reference[::1] - frame[::1]
         distance = np.sum(difference**2)
         distances[idx] = distance
     return distances
@@ -99,14 +101,13 @@ def fuse_mean(frame_fnames, distances, sum_frac=0.25):
     output = np.zeros(frame.shape)
     sort_idx = np.argsort(distances)
     Naveraged = 0
-    for idx in sort_idx[:int(len(distances)*sum_frac)]:
+    for idx in sort_idx[:int(len(distances)*sum_frac) + 1]:
         fname = frame_fnames[idx]
         distance = distances[idx]
         print("summing {}".format(fname))
         frame = load_frame(fname)
         output += frame
         Naveraged += 1
-    print(Naveraged)
     output /= Naveraged
     maximum = np.max(output)
     MAX_BRIGHT = 0.85
@@ -129,10 +130,11 @@ if __name__ == "__main__":
         # A reference frame was passed.
         # 1) load reference frame and compute distances to other frames.
         reference_frame = load_frame(args.reference)
+        print(reference_frame.shape)
         distances = distance(reference_frame, args.filenames)
         # 2) average together.
         image = fuse_mean(args.filenames, distances, 
                           sum_frac=0.25)
-        imsave("./output.tif", image, plugin="freeimage")
+        imsave(args.output, image, plugin="freeimage")
 
     exit(0)
